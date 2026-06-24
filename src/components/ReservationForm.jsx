@@ -2,36 +2,19 @@ import { useState, useRef, useEffect } from 'react'
 import emailjs from '@emailjs/browser'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import {
-  CheckCircle,
-  XCircle,
-  Loader,
-  UtensilsCrossed,
-  Phone,
-  Clock,
-  CalendarDays,
-  Users,
-  ChevronDown,
-  MapPin,
-  Star,
-} from 'lucide-react'
+import { ChevronDown, CheckCircle, XCircle, Loader } from 'lucide-react'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// ─── EmailJS Configuration ───────────────────────────────────────
-// Get these from https://dashboard.emailjs.com/admin
-// Service ID  → EmailJS Dashboard → Email Services → your service
-// Template ID → EmailJS Dashboard → Email Templates → your template
-// Public Key  → EmailJS Dashboard → Account → General → Public Key
-const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'YOUR_SERVICE_ID'
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID'
-const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'YOUR_PUBLIC_KEY'
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
 // ────────────────────────────────────────────────────────────────
 
-const initialForm   = { name: '', phone: '', date: '', time: '', guests: '' }
+const initialForm = { name: '', phone: '', date: '', time: '', guests: '' }
 const initialErrors = { name: '', phone: '', date: '', time: '', guests: '' }
 
-// ── Validators ───────────────────────────────────────────────────
+// ── Validators ──────────────────────────────────────────────────
 function validate(fields) {
   const errors = { ...initialErrors }
   let isValid = true
@@ -58,7 +41,7 @@ function validate(fields) {
     isValid = false
   } else {
     const chosen = new Date(fields.date)
-    const today  = new Date()
+    const today = new Date()
     today.setHours(0, 0, 0, 0)
     if (chosen < today) {
       errors.date = 'Date cannot be in the past.'
@@ -69,6 +52,12 @@ function validate(fields) {
   if (!fields.time) {
     errors.time = 'Please choose a time.'
     isValid = false
+  } else {
+    const [h] = fields.time.split(':').map(Number)
+    if (h < 11 || h >= 23) {
+      errors.time = 'Please choose a time between 11:00 AM and 11:00 PM.'
+      isValid = false
+    }
   }
 
   if (!fields.guests) {
@@ -79,130 +68,60 @@ function validate(fields) {
   return { errors, isValid }
 }
 
-// ── Field Error ──────────────────────────────────────────────────
+// ── Field Error message ──────────────────────────────────────────
 function FieldError({ msg }) {
   if (!msg) return null
   return (
-    <p className="mt-1.5 text-xs text-error font-body flex items-center gap-1.5">
-      <XCircle size={11} />
-      {msg}
+    <p className="mt-1 text-xs text-error font-body flex items-center gap-1">
+      <XCircle size={12} /> {msg}
     </p>
   )
 }
 
-// ── Floating Label Input ─────────────────────────────────────────
-function FloatingInput({ id, type = 'text', label, value, onChange, onBlur, error, touched, min, icon: Icon }) {
-  const isSuccess = touched && !error && value
-  const borderColor = error
-    ? 'border-error'
-    : isSuccess
-    ? 'border-[#5a8a5a]'
-    : 'border-outline-variant/50 focus-within:border-primary'
-
-  return (
-    <div className="relative group">
-      <div className={`relative flex items-center border-b-2 transition-all duration-300 bg-transparent pb-1 ${borderColor}`}>
-        {Icon && (
-          <Icon
-            size={16}
-            className={`mr-3 flex-shrink-0 transition-colors duration-300 ${
-              error ? 'text-error' : isSuccess ? 'text-[#5a8a5a]' : 'text-on-surface-variant/50 group-focus-within:text-primary'
-            }`}
-          />
-        )}
-        <div className="relative flex-1">
-          <input
-            id={id}
-            type={type}
-            placeholder=" "
-            value={value}
-            onChange={onChange}
-            onBlur={onBlur}
-            min={min}
-            className="peer block w-full bg-transparent pt-5 pb-0.5 text-on-surface font-body text-base focus:outline-none focus:ring-0 appearance-none"
-          />
-          <label
-            htmlFor={id}
-            className="absolute left-0 top-4 text-on-surface-variant/70 font-body text-sm transition-all duration-200 pointer-events-none
-              peer-focus:top-0 peer-focus:text-xs peer-focus:text-primary peer-focus:font-medium
-              peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:font-medium"
-          >
-            {label}
-          </label>
-        </div>
-        {isSuccess && !error && (
-          <CheckCircle size={14} className="text-[#5a8a5a] ml-2 flex-shrink-0" />
-        )}
-      </div>
-      <FieldError msg={error} />
-    </div>
-  )
+function formatDate(dateStr) {
+  if (!dateStr) return dateStr
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Kolkata',
+  })
 }
 
-// ── Info Badge ───────────────────────────────────────────────────
-function InfoBadge({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/15">
-      <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
-        <Icon size={14} className="text-[#f5bd64]" />
-      </div>
-      <div>
-        <p className="text-white/50 font-body text-[10px] uppercase tracking-widest">{label}</p>
-        <p className="text-white font-body text-sm font-medium">{value}</p>
-      </div>
-    </div>
-  )
+function formatTime(timeStr) {
+  if (!timeStr) return timeStr
+  const [h, m] = timeStr.split(':').map(Number)
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${suffix}`
 }
 
-// ── Main Component ───────────────────────────────────────────────
 export default function ReservationForm() {
-  const sectionRef  = useRef(null)
-  const leftRef     = useRef(null)
-  const rightRef    = useRef(null)
+  const containerRef = useRef(null)
+  const formRef = useRef(null)
 
-  const [formData, setFormData]       = useState(initialForm)
-  const [errors, setErrors]           = useState(initialErrors)
-  const [touched, setTouched]         = useState({})
-  const [submitState, setSubmitState] = useState('idle') // idle | loading | success | error
+  const [formData, setFormData] = useState(initialForm)
+  const [errors, setErrors] = useState(initialErrors)
+  const [touched, setTouched] = useState({})        // which fields were touched
+  const [submitState, setSubmitState] = useState('idle')   // 'idle' | 'loading' | 'success' | 'error'
+  const [submittedName, setSubmittedName] = useState(null)
 
-  // ── Scroll reveal ────────────────────────────────────────────
+
+  // ── Scroll reveal ──────────────────────────────────────────────
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Left panel slides in from left
-      gsap.from(leftRef.current, {
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 75%', once: true },
-        x: -60,
+      gsap.from('.reservation-content', {
+        scrollTrigger: { trigger: containerRef.current, start: 'top 80%', once: true },
+        y: 40,
         opacity: 0,
-        duration: 1.1,
+        duration: 1,
         ease: 'power3.out',
       })
-      // Right panel slides in from right
-      gsap.from(rightRef.current, {
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 75%', once: true },
-        x: 60,
-        opacity: 0,
-        duration: 1.1,
-        ease: 'power3.out',
-        delay: 0.15,
-      })
-      // Stagger children inside left panel
-      gsap.from('.hero-badge', {
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 65%', once: true },
-        y: 20,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.12,
-        ease: 'power2.out',
-        delay: 0.4,
-      })
-    }, sectionRef)
-
+    }, containerRef)
     return () => ctx.revert()
   }, [])
 
-  // ── Real-time validation ─────────────────────────────────────
+  // ── Validate touched fields in real-time ──────────────────────
   useEffect(() => {
     const { errors: newErrors } = validate(formData)
+    // Only show errors for fields the user has interacted with
     const visibleErrors = { ...initialErrors }
     Object.keys(touched).forEach((key) => {
       if (touched[key]) visibleErrors[key] = newErrors[key]
@@ -210,7 +129,7 @@ export default function ReservationForm() {
     setErrors(visibleErrors)
   }, [formData, touched])
 
-  // ── Handlers ────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────
   const handleChange = (e) => {
     const { id, value } = e.target
     setFormData((prev) => ({ ...prev, [id]: value }))
@@ -221,8 +140,15 @@ export default function ReservationForm() {
     setTouched((prev) => ({ ...prev, [id]: true }))
   }
 
+  useEffect(() => {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY })
+  }, [])
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // Mark all fields as touched to show all errors
     setTouched({ name: true, phone: true, date: true, time: true, guests: true })
 
     const { errors: allErrors, isValid } = validate(formData)
@@ -232,22 +158,25 @@ export default function ReservationForm() {
     setSubmitState('loading')
 
     try {
+      // Template variables sent to EmailJS — match these to your template's {{variables}}
       const templateParams = {
         from_name: formData.name,
-        phone:     formData.phone,
-        date:      formData.date,
-        time:      formData.time,
-        guests:    formData.guests,
-        reply_to:  'noreply@spicegarden.com',
+        phone: formData.phone,
+        date: formatDate(formData.date),  // → "Saturday, 19 April 2026"
+        time: formatTime(formData.time),  // → "7:30 PM"
+        guests: formData.guests,
       }
+
+
 
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         templateParams,
-        EMAILJS_PUBLIC_KEY
       )
 
+
+      setSubmittedName(formData.name)
       setSubmitState('success')
       setFormData(initialForm)
       setTouched({})
@@ -264,314 +193,184 @@ export default function ReservationForm() {
     setTouched({})
   }
 
-  // ── Guest options ────────────────────────────────────────────
-  const guestOptions = ['1 Person', '2 People', '3 People', '4 People', '5 People', '6+ People (Contact us)']
+  // ── Helper: input border color ─────────────────────────────────
+  const borderClass = (field) =>
+    errors[field]
+      ? 'border-error focus:border-error'
+      : touched[field] && !errors[field]
+        ? 'border-tertiary focus:border-tertiary'   // green-ish success
+        : 'border-outline-variant/40 focus:border-primary'
 
-  // ── Success Screen ───────────────────────────────────────────
+  // ── Success screen ─────────────────────────────────────────────
   if (submitState === 'success') {
     return (
-      <section
-        ref={sectionRef}
-        id="reservations"
-        className="relative py-28 px-6 bg-surface overflow-hidden"
-      >
-        {/* Ambient blobs */}
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] bg-secondary-container/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-2xl mx-auto relative z-10 text-center">
-          <div className="bg-surface-container-lowest rounded-[2.5rem] p-12 md:p-16 shadow-[0_24px_80px_rgba(30,27,22,0.08)] border border-outline-variant/15">
-            {/* Animated check */}
-            <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-[#edf7ed] flex items-center justify-center">
-              <CheckCircle size={40} className="text-[#2e7d32]" />
-            </div>
-            <div className="inline-flex items-center gap-2 bg-primary/8 text-primary rounded-full px-4 py-1.5 text-xs font-label font-semibold uppercase tracking-widest mb-6">
-              <Star size={10} fill="currentColor" /> Reservation Received
-            </div>
-            <h2 className="font-headline text-3xl md:text-4xl font-bold text-on-surface mb-4">
-              See you at the table!
-            </h2>
-            <p className="font-body text-on-surface-variant mb-3 text-base leading-relaxed">
-              Thank you, <strong className="text-on-surface">{formData.name || 'Guest'}</strong>! Your table request
-              has been received. Our team will call you shortly to confirm.
-            </p>
-            <p className="font-body text-on-surface-variant/60 text-sm mb-10">
-              Questions? Reach us at{' '}
-              <a href="tel:+919876543210" className="text-primary font-medium underline underline-offset-2">
-                +91 98765 43210
-              </a>
-            </p>
-            <button
-              onClick={handleReset}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-semibold px-8 py-4 rounded-full shadow-[0_8px_32px_rgba(148,46,2,0.3)] hover:shadow-[0_12px_40px_rgba(148,46,2,0.45)] hover:opacity-95 transition-all duration-300"
-            >
-              <CalendarDays size={16} />
-              Make Another Reservation
-            </button>
-          </div>
+      <section ref={containerRef} className="py-32 px-6 bg-surface relative overflow-hidden" id="reservations">
+        <div className="absolute -right-64 -bottom-64 w-[800px] h-[800px] bg-surface-container-low rounded-full blur-3xl opacity-50 pointer-events-none" />
+        <div className="max-w-3xl mx-auto relative z-10 bg-surface-container-lowest p-12 md:p-16 rounded-[2rem] shadow-[0_16px_64px_rgba(30,27,22,0.06)] border border-outline-variant/20 text-center">
+          <CheckCircle size={64} className="text-tertiary mx-auto mb-6" />
+          <h2 className="font-headline text-3xl md:text-4xl font-bold text-on-surface mb-4">
+            Reservation Confirmed! 🎉
+          </h2>
+          <p className="font-body text-lg text-on-surface-variant mb-8">
+            Thank you, <strong>{submittedName || 'Guest'}</strong>! Your table request has been received.
+            We'll reach out to confirm your booking shortly.
+          </p>
+          <button
+            onClick={handleReset}
+            className="bg-gradient-to-r from-primary to-primary-container text-on-primary font-label text-lg font-medium px-10 py-4 rounded-full hover:opacity-90 transition-opacity shadow-lg"
+          >
+            Make Another Reservation
+          </button>
         </div>
       </section>
     )
   }
 
   return (
-    <section
-      ref={sectionRef}
-      id="reservations"
-      className="relative py-24 px-4 md:px-6 bg-surface overflow-hidden"
-    >
-      {/* Ambient background blobs */}
-      <div className="absolute -top-40 left-1/4 w-[600px] h-[600px] bg-primary/4 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-secondary-container/15 rounded-full blur-3xl pointer-events-none" />
+    <section ref={containerRef} className="py-32 px-6 bg-surface relative overflow-hidden" id="reservations">
+      {/* Decorative blob */}
+      <div className="absolute -right-64 -bottom-64 w-[800px] h-[800px] bg-surface-container-low rounded-full blur-3xl opacity-50 pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* ── Split card wrapper ───────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 rounded-[2rem] overflow-hidden shadow-[0_32px_100px_rgba(30,27,22,0.12)] border border-outline-variant/10">
-
-          {/* ── LEFT: Hero panel (2/5) ─────────────────────────── */}
-          <div
-            ref={leftRef}
-            className="lg:col-span-2 relative bg-gradient-to-br from-[#6b1501] via-primary to-[#b5451b] p-8 md:p-10 flex flex-col justify-between overflow-hidden"
-          >
-            {/* Decorative circles */}
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full" />
-            <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white/5 rounded-full" />
-            <div className="absolute top-1/2 right-4 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2" />
-
-            {/* Top content */}
-            <div className="relative z-10">
-              {/* Icon badge */}
-              <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center mb-8 border border-white/20">
-                <UtensilsCrossed size={24} className="text-[#f5bd64]" />
-              </div>
-
-              {/* Pre-title */}
-              <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-1 mb-4">
-                <Star size={10} className="text-[#f5bd64]" fill="#f5bd64" />
-                <span className="text-white/80 font-body text-xs uppercase tracking-widest">
-                  Private Dining
-                </span>
-              </div>
-
-              <h2 className="font-headline text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
-                Reserve Your<br />
-                <span className="text-[#f5bd64] italic font-normal">Perfect Table</span>
-              </h2>
-
-              <p className="font-body text-white/70 text-sm leading-relaxed max-w-xs">
-                Every meal is a story. Let us craft yours — from the first sip to the last sweet moment.
-              </p>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-8">
-                <div className="h-px flex-1 bg-white/15" />
-                <div className="w-1.5 h-1.5 rounded-full bg-[#f5bd64]/60" />
-                <div className="h-px flex-1 bg-white/15" />
-              </div>
-            </div>
-
-            {/* Bottom: Info badges */}
-            <div className="relative z-10 space-y-3">
-              <p className="text-white/40 font-body text-[10px] uppercase tracking-widest mb-4">
-                Quick Info
-              </p>
-              <div className="hero-badge">
-                <InfoBadge icon={Clock} label="Opening Hours" value="11:00 AM – 11:00 PM" />
-              </div>
-              <div className="hero-badge">
-                <InfoBadge icon={Phone} label="Reservations" value="+91 98765 43210" />
-              </div>
-              <div className="hero-badge">
-                <InfoBadge icon={MapPin} label="Location" value="MG Road, Bangalore" />
-              </div>
-            </div>
-          </div>
-
-          {/* ── RIGHT: Form panel (3/5) ────────────────────────── */}
-          <div
-            ref={rightRef}
-            className="lg:col-span-3 bg-surface-container-lowest p-8 md:p-12"
-          >
-            {/* Error banner */}
-            {submitState === 'error' && (
-              <div className="mb-8 flex items-start gap-3 bg-error-container text-on-error-container rounded-2xl px-4 py-4 border border-error/15">
-                <XCircle size={18} className="flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-body text-sm font-semibold mb-0.5">Oops, something went wrong.</p>
-                  <p className="font-body text-xs opacity-80">
-                    Please try again or call{' '}
-                    <a href="tel:+919876543210" className="underline font-medium">
-                      +91 98765 43210
-                    </a>
-                    .
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="mb-8">
-              <h3 className="font-headline text-2xl md:text-3xl font-bold text-on-surface mb-1">
-                Book a Table
-              </h3>
-              <p className="font-body text-on-surface-variant text-sm">
-                Fill in the details below — we'll confirm within the hour.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} noValidate className="space-y-7">
-
-              {/* Row 1: Name + Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
-                <FloatingInput
-                  id="name"
-                  label="Full Name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={errors.name}
-                  touched={touched.name}
-                  icon={Users}
-                />
-                <FloatingInput
-                  id="phone"
-                  type="tel"
-                  label="Phone Number"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={errors.phone}
-                  touched={touched.phone}
-                  icon={Phone}
-                />
-              </div>
-
-              {/* Row 2: Date + Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
-                <FloatingInput
-                  id="date"
-                  type="date"
-                  label="Date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={errors.date}
-                  touched={touched.date}
-                  icon={CalendarDays}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-                <FloatingInput
-                  id="time"
-                  type="time"
-                  label="Time"
-                  value={formData.time}
-                  onChange={(e) => {
-                    handleChange(e)
-                  }}
-                  onBlur={handleBlur}
-                  error={errors.time}
-                  touched={touched.time}
-                  icon={Clock}
-                  min="11:00"
-                  max="23:00"
-                />
-              </div>
-
-              {/* Row 3: Guests (full-width custom select) */}
-              <div>
-                <div
-                  className={`relative flex items-center border-b-2 pb-1 transition-all duration-300 ${
-                    errors.guests
-                      ? 'border-error'
-                      : touched.guests && !errors.guests && formData.guests
-                      ? 'border-[#5a8a5a]'
-                      : 'border-outline-variant/50 focus-within:border-primary'
-                  }`}
-                >
-                  <Users
-                    size={16}
-                    className={`mr-3 flex-shrink-0 transition-colors ${
-                      errors.guests
-                        ? 'text-error'
-                        : touched.guests && !errors.guests && formData.guests
-                        ? 'text-[#5a8a5a]'
-                        : 'text-on-surface-variant/50'
-                    }`}
-                  />
-                  <div className="relative flex-1">
-                    <select
-                      id="guests"
-                      value={formData.guests}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className="w-full bg-transparent pt-5 pb-0.5 text-on-surface font-body text-base focus:outline-none appearance-none cursor-pointer"
-                    >
-                      <option value="" disabled hidden></option>
-                      {guestOptions.map((opt, i) => (
-                        <option key={i} value={i === guestOptions.length - 1 ? '6+' : String(i + 1)}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                    {/* Floating label for select */}
-                    <label
-                      htmlFor="guests"
-                      className={`absolute left-0 pointer-events-none font-body transition-all duration-200 ${
-                        formData.guests
-                          ? 'top-0 text-xs font-medium text-primary'
-                          : 'top-4 text-sm text-on-surface-variant/70'
-                      }`}
-                    >
-                      Number of Guests
-                    </label>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className="text-on-surface-variant/50 pointer-events-none ml-2 flex-shrink-0"
-                  />
-                </div>
-                <FieldError msg={errors.guests} />
-              </div>
-
-              {/* Special Occasion note (optional extra flair) */}
-              <div className="bg-surface-container-low rounded-2xl px-5 py-4 border border-outline-variant/15 flex items-center gap-3">
-                <Star size={14} className="text-secondary flex-shrink-0" fill="#7f5600" />
-                <p className="font-body text-xs text-on-surface-variant leading-relaxed">
-                  Celebrating something special?{' '}
-                  <span className="text-primary font-medium">
-                    Mention it when we call — we love creating magic moments.
-                  </span>
-                </p>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={submitState === 'loading'}
-                className="relative w-full overflow-hidden group bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-semibold text-base py-4 rounded-full shadow-[0_8px_32px_rgba(148,46,2,0.3)] hover:shadow-[0_12px_40px_rgba(148,46,2,0.45)] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-400 flex items-center justify-center gap-2.5"
-              >
-                {/* Shine sweep */}
-                <span className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-12 pointer-events-none" />
-
-                {submitState === 'loading' ? (
-                  <>
-                    <Loader size={18} className="animate-spin" />
-                    Sending your request…
-                  </>
-                ) : (
-                  <>
-                    <CalendarDays size={16} />
-                    Reserve Now
-                  </>
-                )}
-              </button>
-
-              <p className="text-center font-body text-[11px] text-on-surface-variant/50 leading-relaxed">
-                By submitting, you agree to be contacted by our team to confirm your booking.
-                <br />No spam — ever.
-              </p>
-            </form>
-          </div>
+      <div className="reservation-content max-w-3xl mx-auto relative z-10 bg-surface-container-lowest p-8 md:p-16 rounded-[2rem] shadow-[0_16px_64px_rgba(30,27,22,0.06)] border border-outline-variant/20">
+        <div className="text-center mb-10 md:mb-12">
+          <h2 className="font-headline text-3xl md:text-5xl font-bold text-on-surface mb-4">
+            Reserve Your Table Today
+          </h2>
+          <p className="font-body text-base md:text-lg text-on-surface-variant">
+            Secure your spot for an unforgettable evening.
+          </p>
         </div>
+
+        {/* Error banner */}
+        {submitState === 'error' && (
+          <div className="mb-8 p-4 rounded-xl bg-error-container text-on-error-container font-body text-sm flex items-start gap-3">
+            <XCircle size={20} className="flex-shrink-0 mt-0.5" />
+            <span>
+              Something went wrong sending your request. Please try again or call us at{' '}
+              <a href="tel:+919876543210" className="underline font-semibold">+91 98765 43210</a>.
+            </span>
+          </div>
+        )}
+
+        <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            {/* Full Name */}
+            <div className="relative group">
+              <input
+                id="name"
+                type="text"
+                placeholder=" "
+                value={formData.name}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`block w-full bg-transparent border-0 border-b py-3 px-0 text-on-surface focus:ring-0 transition-colors font-body text-lg peer ${borderClass('name')}`}
+              />
+              <label
+                htmlFor="name"
+                className="absolute left-0 top-3 text-on-surface-variant font-label text-lg transition-all peer-focus:-top-4 peer-focus:text-sm peer-focus:text-primary peer-[&:not(:placeholder-shown)]:-top-4 peer-[&:not(:placeholder-shown)]:text-sm cursor-text"
+              >
+                Full Name
+              </label>
+              <FieldError msg={errors.name} />
+            </div>
+
+            {/* Phone */}
+            <div className="relative group">
+              <input
+                id="phone"
+                type="tel"
+                placeholder=" "
+                value={formData.phone}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`block w-full bg-transparent border-0 border-b py-3 px-0 text-on-surface focus:ring-0 transition-colors font-body text-lg peer ${borderClass('phone')}`}
+              />
+              <label
+                htmlFor="phone"
+                className="absolute left-0 top-3 text-on-surface-variant font-label text-lg transition-all peer-focus:-top-4 peer-focus:text-sm peer-focus:text-primary peer-[&:not(:placeholder-shown)]:-top-4 peer-[&:not(:placeholder-shown)]:text-sm cursor-text"
+              >
+                Phone Number
+              </label>
+              <FieldError msg={errors.phone} />
+            </div>
+
+            {/* Date */}
+            <div className="relative group">
+              <label htmlFor="date" className="block text-primary font-label text-sm mb-1">Date</label>
+              <input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                min={new Date().toISOString().split('T')[0]}
+                className={`block w-full bg-transparent border-0 border-b py-3 px-0 text-on-surface focus:ring-0 transition-colors font-body text-lg ${borderClass('date')}`}
+              />
+              <FieldError msg={errors.date} />
+            </div>
+
+            {/* Time */}
+            <div className="relative group">
+              <label htmlFor="time" className="block text-primary font-label text-sm mb-1">Time</label>
+              <input
+                id="time"
+                type="time"
+                value={formData.time}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                min="11:00"
+                max="23:00"
+                className={`block w-full bg-transparent border-0 border-b py-3 px-0 text-on-surface focus:ring-0 transition-colors font-body text-lg ${borderClass('time')}`}
+              />
+              <FieldError msg={errors.time} />
+            </div>
+
+            {/* Guests */}
+            <div className="relative group md:col-span-2">
+              <label htmlFor="guests" className="block text-primary font-label text-sm mb-1">Number of Guests</label>
+              <div className="relative">
+                <select
+                  id="guests"
+                  value={formData.guests}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`block w-full bg-transparent border-0 border-b py-3 px-0 text-on-surface focus:ring-0 transition-colors font-body text-lg appearance-none cursor-pointer ${borderClass('guests')}`}
+                >
+                  <option value="" disabled>Select guests</option>
+                  <option value="1">1 Person</option>
+                  <option value="2">2 People</option>
+                  <option value="3">3 People</option>
+                  <option value="4">4 People</option>
+                  <option value="5+">5+ People (Contact us)</option>
+                </select>
+                <ChevronDown size={22} className="absolute right-0 top-3.5 text-on-surface-variant pointer-events-none" />
+              </div>
+              <FieldError msg={errors.guests} />
+            </div>
+
+          </div>
+
+          {/* Submit button */}
+          <button
+            type="submit"
+            disabled={submitState === 'loading'}
+            className="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-label text-xl font-medium py-5 rounded-full mt-8 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity shadow-lg flex items-center justify-center gap-3"
+          >
+            {submitState === 'loading' ? (
+              <>
+                <Loader size={22} className="animate-spin" />
+                Sending…
+              </>
+            ) : (
+              'Reserve Now'
+            )}
+          </button>
+
+          <p className="text-center font-body text-xs text-on-surface-variant/60 mt-4">
+            By submitting, you agree to be contacted by our team to confirm your booking.
+          </p>
+        </form>
       </div>
     </section>
   )

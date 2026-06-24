@@ -35,7 +35,7 @@ export default function Footer() {
         
       </div>
       <div className="text-center mt-16 font-body text-sm tracking-wide text-on-surface-variant opacity-80">
-        © 2024 Spice Garden Bistro. All Rights Reserved.
+      Spice Garden Bistro  © 2026 Design By <a href="https://craftkoder.com" className="hover:underline">CraftKoder</a> All Rights Reserved.
       </div>
     </footer>
   )
